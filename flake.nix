@@ -1,5 +1,5 @@
 {
-  description = "pass-tomb: keep passwords encrypted inside a macOS DMG (tomb)";
+  description = "pass-tomb: keep passwords encrypted inside a macOS DMG";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -19,7 +19,7 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           meta = with pkgs.lib; {
-            description = "A pass extension that keeps the password tree encrypted inside a tomb";
+            description = "pass extension for macOS that keeps passwords encrypted inside a DMG tomb";
             homepage = "https://github.com/Yahddyyp/pass-tomb-osx";
             license = licenses.mit;
             platforms = platforms.darwin;
