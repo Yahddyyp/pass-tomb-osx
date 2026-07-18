@@ -1,5 +1,5 @@
 # Pass Tomb OSX
-A `pass` extension for macOS that keeps your password tree encrypted inside a tomb - an AES - 256 encrypted DMG mangaed with `hdiutil`
+A `pass` extension for macOS that keeps your password tree encrypted inside a tomb - an AES - 256 encrypted DMG managed with `hdiutil`
 
 This project is just a clone of [pass-tomb](https://github.com/roddhjav/pass-tomb). It is only porting over the project to be used on macOS.
 
