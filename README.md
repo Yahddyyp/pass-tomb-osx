@@ -200,13 +200,15 @@ rm -rf ~/.password-store.backup
 
 
 ## Some other information 
+- Make sure to leave the password dir in the tomb (like if you are trying to close it in the same terminal in which you are cd'd into the password dir) or else tomb will fail to close with `pass-close` 
+
 - It will create a random password for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
 
 - It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config.
 
-- The `timer` cli does not handle  mutiple units like 2m30s or 2m 30s, you will need to convert them into seconds for it to work properly.
+- The `pass-timer` cli does not handle  mutiple units like 2m30s or 2m 30s, you will need to convert them into seconds for it to work properly.
 
-- I would make a better `-h/help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr.
+- I would make a better `-h/--help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr.
 
 - This extension also sometimes requires `sudo` password so just know that 
 
