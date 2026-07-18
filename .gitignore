@@ -1,2 +1,6 @@
-/target
+target/
 .DS_Store
+*.dmg
+*.key
+*.timer
+gnupg/
