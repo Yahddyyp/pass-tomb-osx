@@ -7,14 +7,14 @@ This project is just a clone of [pass-tomb](https://github.com/roddhjav/pass-tom
 ### Homebrew (recommended)
 
  ```bash
- brew tap Yahddyyp/formulae
- brew install pass-tomb
+brew tap Yahddyyp/formulae
+brew install pass-tomb
  ```
 
  ### Cargo
 
  ```bash
- cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
+cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
  ```
 
 ## Setup 
@@ -25,56 +25,56 @@ This project is just a clone of [pass-tomb](https://github.com/roddhjav/pass-tom
 ### Zsh/Bash  
 Add this to your `.zshrc` or `.bashrc`
 ``` bash 
- export PASSWORD_STORE_ENABLE_EXTENSIONS=true
- export PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
+export PASSWORD_STORE_ENABLE_EXTENSIONS=true
+export PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
 ```
 
 ### Fish 
 Add this to your `config.fish`
 ```fish 
- set -x PASSWORD_STORE_ENABLE_EXTENSIONS true
- set -x PASSWORD_STORE_EXTENSIONS_DIR "$HOME/.local/share/pass-extensions"
+set -x PASSWORD_STORE_ENABLE_EXTENSIONS true
+set -x PASSWORD_STORE_EXTENSIONS_DIR "$HOME/.local/share/pass-extensions"
 ```
 
 ### nushell 
 Add this to your `env.nu` or wherever you have your nu config
 ```nushell 
- $env.PASSWORD_STORE_ENABLE_EXTENSIONS = "true"
- $env.PASSWORD_STORE_EXTENSIONS_DIR = "$HOME/.local/share/pass-extensions"
+$env.PASSWORD_STORE_ENABLE_EXTENSIONS = "true"
+$env.PASSWORD_STORE_EXTENSIONS_DIR = "$HOME/.local/share/pass-extensions"
 ```
 
 ### Other shells 
 For other shells, set these environment variables however your shell prefers:
 ``` sh 
- PASSWORD_STORE_ENABLE_EXTENSIONS=true
- PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
+PASSWORD_STORE_ENABLE_EXTENSIONS=true
+PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
 ```
 
 
 ## Usage 
 ### Create a tomb
 ```bash
- pass-tomb <GPG-ID>
+pass-tomb <GPG-ID>
  ```
 
 ### Open the tomb
 
  ```bash
- pass-open
+pass-open
  ```
 
 ### Use pass as normal
 
  ```bash
- pass insert github/token
- pass show github/token
- pass generate github/new-pass 20
+pass insert github/token
+pass show github/token
+pass generate github/new-pass 20
  ```
 
 ### Close the tomb
 
  ```bash
- pass-close
+pass-close
  ```
 
 ### Auto-close timer
@@ -82,68 +82,68 @@ For other shells, set these environment variables however your shell prefers:
  One-shot (just this session):
 
  ```bash
- pass-open -T 30m
+pass-open -T 30m
  ```
 
  Persistent (every session until cleared):
 
  ```bash
- pass-timer 30m
- pass-open          # reads the persistent timer
- pass-timer --clear # remove it
+pass-timer 30m
+pass-open          # reads the persistent timer
+pass-timer --clear # remove it
  ```
 
 ### Change password
 
  ```bash
- pass-tomb --change
+pass-tomb --change
  ```
 
 ### Change GPG recipients
 
  ```bash
- pass-tomb --chkey <new-gpg-id>
+pass-tomb --chkey <new-gpg-id>
  ```
 
 ### Resize the DMG
 You will need to do this when the DMG fills up as the default is 30m
 
  ```bash
- pass-tomb --resize 100m  
+pass-tomb --resize 100m  
  ```
 
 ### Export/import key (backup)
 
  ```bash
- pass-tomb --export ~/backup.tomb-key
- pass-tomb --import ~/backup.tomb-key
+pass-tomb --export ~/backup.tomb-key
+pass-tomb --import ~/backup.tomb-key
    ```
 
 ## Migration from your password store
 
 1. Backup
 ```bash 
- mv ~/.password-store ~/.password-store.backup
+mv ~/.password-store ~/.password-store.backup
 ```
 
 2. Create tomb (-n skips init, preserves .gpg-id)
 ```bash 
- pass-tomb -n <GPG-ID>
+pass-tomb -n <GPG-ID>
 ```
 
 3. Copy everything across
 ```bash 
- cp -a ~/.password-store.backup/. ~/.password-store/
+cp -a ~/.password-store.backup/. ~/.password-store/
 ```
 
 4. Verify
 ```bash
- pass show
+pass show
 ```
 
 5. Remove backup when satisfied
 ```bash 
- rm -rf ~/.password-store.backup
+rm -rf ~/.password-store.backup
 ```
 
 ## Environment Variables
@@ -203,6 +203,8 @@ You will need to do this when the DMG fills up as the default is 30m
 - It will create a random password for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
 
 - I would make a better `-h/help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr.
+
+- This extension also sometimes requires `sudo` password so just know that 
 
 <p align="center"><a href="https://github.com/yahddyyp/pass-tomb-osx/blob/main/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&logoColor=cdd6f4&colorA=1e1e2e&colorB=cba6f7"/></a></p>
 
