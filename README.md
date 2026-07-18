@@ -202,7 +202,7 @@ rm -rf ~/.password-store.backup
 ## Some other information 
 - Make sure to leave the password dir in the tomb (like if you are trying to close it in the same terminal in which you are cd'd into the password dir) or else tomb will fail to close with `pass-close` 
 
-- It will create a random password for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
+- It will create a random password that it will not show nor can you find anywhere unless you decrypt the key file for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
 
 - It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config.
 
