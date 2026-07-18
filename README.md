@@ -1,7 +1,7 @@
 # Pass Tomb OSX
 A `pass` extension for macOS that keeps your password tree encrypted inside a tomb - an AES - 256 encrypted DMG mangaed with `hdiutil`
 
-This project is just a clone of [`pass-tomb`](https://github.com/roddhjav/pass-tomb). It is only porting over the project to be used on macOS.
+This project is just a clone of [pass-tomb](https://github.com/roddhjav/pass-tomb). It is only porting over the project to be used on macOS.
 
 ## Installation 
 ### Homebrew (recommended)
@@ -25,56 +25,56 @@ This project is just a clone of [`pass-tomb`](https://github.com/roddhjav/pass-t
 ### Zsh/Bash  
 Add this to your `.zshrc` or `.bashrc`
 ``` bash 
-  export PASSWORD_STORE_ENABLE_EXTENSIONS=true
-  export PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
+ export PASSWORD_STORE_ENABLE_EXTENSIONS=true
+ export PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
 ```
 
 ### Fish 
 Add this to your `config.fish`
 ```fish 
-  set -x PASSWORD_STORE_ENABLE_EXTENSIONS true
-  set -x PASSWORD_STORE_EXTENSIONS_DIR "$HOME/.local/share/pass-extensions"
+ set -x PASSWORD_STORE_ENABLE_EXTENSIONS true
+ set -x PASSWORD_STORE_EXTENSIONS_DIR "$HOME/.local/share/pass-extensions"
 ```
 
 ### nushell 
 Add this to your `env.nu` or wherever you have your nu config
 ```nushell 
-  $env.PASSWORD_STORE_ENABLE_EXTENSIONS = "true"
-  $env.PASSWORD_STORE_EXTENSIONS_DIR = "$HOME/.local/share/pass-extensions"
+ $env.PASSWORD_STORE_ENABLE_EXTENSIONS = "true"
+ $env.PASSWORD_STORE_EXTENSIONS_DIR = "$HOME/.local/share/pass-extensions"
 ```
 
 ### Other shells 
 For other shells, set these environment variables however your shell prefers:
 ``` sh 
-  PASSWORD_STORE_ENABLE_EXTENSIONS=true
-  PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
+ PASSWORD_STORE_ENABLE_EXTENSIONS=true
+ PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
 ```
 
 
 ## Usage 
 ### Create a tomb
 ```bash
-  pass-tomb <GPG-ID>
+ pass-tomb <GPG-ID>
  ```
 
 ### Open the tomb
 
  ```bash
-  pass-open
+ pass-open
  ```
 
 ### Use pass as normal
 
  ```bash
-  pass insert github/token
-  pass show github/token
-  pass generate github/new-pass 20
+ pass insert github/token
+ pass show github/token
+ pass generate github/new-pass 20
  ```
 
 ### Close the tomb
 
  ```bash
-  pass-close
+ pass-close
  ```
 
 ### Auto-close timer
@@ -82,68 +82,68 @@ For other shells, set these environment variables however your shell prefers:
  One-shot (just this session):
 
  ```bash
-  pass-open -T 30m
+ pass-open -T 30m
  ```
 
  Persistent (every session until cleared):
 
  ```bash
-  pass-timer 30m
-  pass-open          # reads the persistent timer
-  pass-timer --clear # remove it
+ pass-timer 30m
+ pass-open          # reads the persistent timer
+ pass-timer --clear # remove it
  ```
 
 ### Change password
 
  ```bash
-  pass-tomb --change
+ pass-tomb --change
  ```
 
 ### Change GPG recipients
 
  ```bash
-  pass-tomb --chkey <new-gpg-id>
+ pass-tomb --chkey <new-gpg-id>
  ```
 
 ### Resize the DMG
 You will need to do this when the DMG fills up as the default is 30m
 
  ```bash
-  pass-tomb --resize 100m  
+ pass-tomb --resize 100m  
  ```
 
 ### Export/import key (backup)
 
  ```bash
-  pass-tomb --export ~/backup.tomb-key
-  pass-tomb --import ~/backup.tomb-key
+ pass-tomb --export ~/backup.tomb-key
+ pass-tomb --import ~/backup.tomb-key
    ```
 
 ## Migration from your password store
 
 1. Backup
 ```bash 
-  mv ~/.password-store ~/.password-store.backup
+ mv ~/.password-store ~/.password-store.backup
 ```
 
 2. Create tomb (-n skips init, preserves .gpg-id)
 ```bash 
-  pass-tomb -n <GPG-ID>
+ pass-tomb -n <GPG-ID>
 ```
 
 3. Copy everything across
 ```bash 
-  cp -a ~/.password-store.backup/. ~/.password-store/
+ cp -a ~/.password-store.backup/. ~/.password-store/
 ```
 
 4. Verify
 ```bash
-  pass show
+ pass show
 ```
 
 5. Remove backup when satisfied
 ```bash 
-  rm -rf ~/.password-store.backup
+ rm -rf ~/.password-store.backup
 ```
 
 ## Environment Variables
