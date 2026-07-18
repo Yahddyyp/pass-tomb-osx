@@ -171,7 +171,7 @@ You will need to do this when the DMG fills up as the default is 30m
 | `-p, --path <subfolder>` | Create tomb for a subfolder |
 | `-t, --tomb <file>` | Path to the DMG file |
 | `-k, --key <file>` | Path to the key file |
-| `-T, --timer <time>` | One-shot auto-close timer (e.g. `30m`, `2h`) |
+| `-T, --timer <time>` | One-shot timer (e.g. `30m`, `2h`) |
 | `-f, --force` | Force overwrite |
 | `--unsafe` | Speed up creation (testing only) |
 | `-C, --change` | Change the tomb password |
