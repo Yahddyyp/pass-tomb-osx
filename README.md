@@ -202,9 +202,13 @@ rm -rf ~/.password-store.backup
 ## Some other information 
 - It will create a random password for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
 
+- It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config.
+
 - I would make a better `-h/help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr.
 
 - This extension also sometimes requires `sudo` password so just know that 
+
+- The **raycast** and browser extensions will only work when the tomb is open 
 
 <p align="center"><a href="https://github.com/yahddyyp/pass-tomb-osx/blob/main/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&logoColor=cdd6f4&colorA=1e1e2e&colorB=cba6f7"/></a></p>
 
