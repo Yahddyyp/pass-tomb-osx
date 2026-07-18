@@ -1,0 +1,35 @@
+[package]
+name = "pass-tomb"
+version = "1.0.0"
+edition = "2024"
+
+[lib]
+name = "pass_tomb"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pass-tomb"
+path = "src/bin/pass-tomb.rs"
+
+[[bin]]
+name = "pass-open"
+path = "src/bin/pass-open.rs"
+
+[[bin]]
+name = "pass-close"
+path = "src/bin/pass-close.rs"
+
+[[bin]]
+name = "pass-timer"
+path = "src/bin/pass-timer.rs"
+
+[dependencies]
+age = { version = "0.12", features = ["armor"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
+libc = "0.2"
+rand = "0.8"
+rpassword = "7"
+secrecy = "0.10"
+zeroize = { version = "1", features = ["zeroize_derive"] }
