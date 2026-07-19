@@ -202,17 +202,19 @@ rm -rf ~/.password-store.backup
 ## Some other information 
 - Make sure to leave the password dir in the tomb (like if you are trying to close it in the same terminal in which you are cd'd into the password dir) or else tomb will fail to close with `pass-close` 
 
-- It will create a random password that it will not show nor can you find anywhere unless you decrypt the key file for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it. 
+- It will create a random password that it will not show nor can you find anywhere unless you decrypt the key file for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it 
 
-- It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config.
+- It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config
 
-- The `pass-timer` cli does not handle  mutiple units like 2m30s or 2m 30s, you will need to convert them into seconds for it to work properly.
+- The `pass-timer` cli does not handle  mutiple units like 2m30s or 2m 30s, you will need to convert them into seconds for it to work properly
 
-- I would make a better `-h/--help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr.
+- I would make a better `-h/--help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr
 
-- This extension also sometimes requires `sudo` password so just know that 
+- This extension also sometimes requires `sudo` password so just know that
 
 - The **raycast** and browser extensions will only work when the tomb is open 
+
+- You might wanna put the `.fseventsd` folder that macOS creates for tracking changes in volumes into `.gitignore`
 
 <p align="center"><a href="https://github.com/yahddyyp/pass-tomb-osx/blob/main/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&logoColor=cdd6f4&colorA=1e1e2e&colorB=cba6f7"/></a></p>
 
