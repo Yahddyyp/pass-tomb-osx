@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 
 use crate::tomb;
 
@@ -818,7 +818,7 @@ pub fn cmd_change(
     Ok(())
 }
 
-/// `pass tomb --resize <size>` — resize an existing password tomb.
+// `pass tomb --resize <size>` — resize an existing password tomb.
 pub fn cmd_resize(
     new_size: &str,
     quiet: bool,

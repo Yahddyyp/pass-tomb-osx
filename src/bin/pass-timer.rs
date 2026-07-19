@@ -1,6 +1,6 @@
 use clap::Parser;
 
-/// Show, set, or clear timer status.
+// Show, set, or clear timer status.
 #[derive(Parser)]
 #[command(
     name = "pass-timer",
