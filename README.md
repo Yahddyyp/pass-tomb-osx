@@ -7,7 +7,7 @@ This project is just a clone of [pass-tomb](https://github.com/roddhjav/pass-tom
 ### Homebrew (recommended)
 
  ```bash
-brew tap Yahddyyp/formulae
+brew tap Yahddyyp/tap
 brew install pass-tomb
  ```
 
