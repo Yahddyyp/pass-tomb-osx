@@ -35,6 +35,8 @@ Requires `gnupg` and `pass` to be installed using nixpkgs as well since they're 
 cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
  ```
 
+You need `gnupg` and `pass for cargo as well 
+
 ## Setup 
 
 > [!NOTE]
