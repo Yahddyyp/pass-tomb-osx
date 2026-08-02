@@ -24,7 +24,7 @@ pass-tomb-osx = {
 Then reference the package, e.g. in `home.packages` or `environment.systemPackages`:
 
 ```nix
-pass-tomb-osx.packages.${pkgs.system}.default
+pass-tomb-osx.packages.${pkgs.stdenv.hostPlatform.system}.default
 ```
 
 Requires `gnupg` and `pass` to be installed using nixpkgs as well since they're runtime dependencies, not bundled.
