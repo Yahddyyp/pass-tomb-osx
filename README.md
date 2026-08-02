@@ -11,7 +11,25 @@ brew tap Yahddyyp/tap
 brew install pass-tomb
  ```
 
- ### Cargo
+### Nix Flake (for the geeks)
+Add to your flake inputs:
+
+```nix
+pass-tomb-osx = {
+  url = "github:Yahddyyp/pass-tomb-osx";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+```
+
+Then reference the package, e.g. in `home.packages` or `environment.systemPackages`:
+
+```nix
+pass-tomb-osx.packages.${pkgs.system}.default
+```
+
+Requires `gnupg` and `pass` to be installed using nixpkgs as well since they're runtime dependencies, not bundled.
+
+### Cargo
 
  ```bash
 cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
