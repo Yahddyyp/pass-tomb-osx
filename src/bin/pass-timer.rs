@@ -1,24 +1,23 @@
 use clap::Parser;
 
-// Show, set, or clear timer status.
 #[derive(Parser)]
 #[command(
     name = "pass-timer",
-    version = "1.0.0",
+    version = env!("CARGO_PKG_VERSION"),
     about = "Show, set, or clear timer status"
 )]
 struct Cli {
-    // Omit to show current timer.
+    /// Omit to show current timer.
     timer: Option<String>,
 
-    // Path to the password store
+    /// Path to the password store
     store: Option<String>,
 
-    // Clear the timer
+    /// Clear the timer
     #[arg(long = "clear")]
     clear: bool,
 
-    // Be quiet
+    /// Be quiet
     #[arg(short = 'q', long = "quiet")]
     quiet: bool,
 }

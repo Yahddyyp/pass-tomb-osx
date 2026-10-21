@@ -4,16 +4,18 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(
     name = "pass-close",
-    version = "1.0.0",
+    version = env!("CARGO_PKG_VERSION"),
     about = "Close a password tomb"
 )]
 struct Cli {
-    // Path to the password store or tomb file to close
+    /// Path to the password store or tomb file to close
     store: Option<String>,
 
+    /// Be quiet
     #[arg(short = 'q', long = "quiet")]
     quiet: bool,
 
+    /// Be verbose
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
 }

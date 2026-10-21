@@ -247,13 +247,13 @@ pub fn is_mounted(tomb_path: &Path) -> Result<bool> {
 //     </dict>
 // </array>
 // ```
-// We extract image-path from the outer dict and mount-point from the inner one.
+// Extract image path from the outer dict and mount-point from the inner one.
 
 fn parse_info_plist(data: &[u8]) -> Result<Vec<TombInfo>> {
     let plist_str = String::from_utf8_lossy(data);
     let mut results = Vec::new();
 
-    // Find each outer <dict> (the top-level image entries)
+    // Find each outer <dict> (the top level image entries)
     let mut pos = 0;
     while let Some(dict_start) = plist_str[pos..].find("<dict>") {
         let abs_start = pos + dict_start;
