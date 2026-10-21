@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          PACKAGE_VERSION="$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "pass-tomb") | .version')"
+
+          if [[ "$VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "::error::Tag version $VERSION does not match Cargo.toml version $PACKAGE_VERSION"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Build release binaries
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: cargo build --release --locked --target "${{ matrix.target }}" --bins
+
+      - name: Package
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          ARCHIVE="pass-tomb-${VERSION}-${TARGET}"
+          mkdir -p "package/${ARCHIVE}/bin" dist
+
+          for binary in pass-tomb pass-open pass-close pass-timer; do
+            install -m 755 \
+              "target/${TARGET}/release/${binary}" \
+              "package/${ARCHIVE}/bin/${binary}"
+          done
+
+          install -m 644 README.md "package/${ARCHIVE}/README.md"
+          install -m 644 CHANGELOG.md "package/${ARCHIVE}/CHANGELOG.md"
+          install -m 644 LICENSE "package/${ARCHIVE}/LICENSE"
+
+          tar -czf "dist/${ARCHIVE}.tar.gz" -C package "${ARCHIVE}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: pass-tomb-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          pattern: pass-tomb-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: shasum -a 256 *.tar.gz > SHA256SUMS
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          gh release create "$TAG" \
+            artifacts/*.tar.gz \
+            CHANGELOG.md \
+            artifacts/SHA256SUMS \
+            --verify-tag \
+            --title "pass-tomb ${TAG}" \
+            --generate-notes
