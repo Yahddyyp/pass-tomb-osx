@@ -4,10 +4,10 @@ use clap::Parser;
 #[command(
     name = "pass-timer",
     version = env!("CARGO_PKG_VERSION"),
-    about = "Show, set, or clear timer status"
+    about = "Show, set, or clear timer status."
 )]
 struct Cli {
-    /// Omit to show current timer.
+    /// Omit to show current timer
     timer: Option<String>,
 
     /// Path to the password store

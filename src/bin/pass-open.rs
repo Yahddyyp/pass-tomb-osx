@@ -1,8 +1,8 @@
 use clap::Parser;
 
-// Open a password tomb.
+// Open a password tomb
 #[derive(Parser)]
-#[command(name = "pass-open", version = env!("CARGO_PKG_VERSION"), about = "Open a password tomb")]
+#[command(name = "pass-open", version = env!("CARGO_PKG_VERSION"), about = "Open a password tomb.")]
 struct Cli {
     /// Subfolder to open the tomb in
     subfolder: Option<String>,

@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 use crate::tomb;
 
@@ -73,65 +73,88 @@ macro_rules! _verbose { ($($arg:tt)*) => { if is_verbose() { eprint!("  \x1b[1;3
 macro_rules! _verbose_tomb { ($($arg:tt)*) => { if is_verbose() { eprint!("  \x1b[1;35m.\x1b[0m  "); eprintln!($($arg)*); } } }
 
 fn is_quiet() -> bool {
-    std::env::var("PASSWORD_STORE_QUIET").map_or(false, |v| v == "1")
+    std::env::var("PASSWORD_STORE_QUIET").is_ok_and(|v| v == "1")
 }
 
 // Parse a timer string like "30m", "1h", "2d" into seconds.
 // Returns None if the format is unrecognized.
 fn parse_timer_seconds(timer: &str) -> Option<u64> {
-    let timer = timer.trim().to_lowercase();
-    if let Some(n) = timer
-        .strip_suffix('w')
-        .or_else(|| timer.strip_suffix("week"))
-        .or_else(|| timer.strip_suffix("weeks"))
-    {
-        n.parse::<u64>().ok().map(|v| v * 7 * 86400)
-    } else if let Some(n) = timer
-        .strip_suffix('d')
-        .or_else(|| timer.strip_suffix("day"))
-        .or_else(|| timer.strip_suffix("days"))
-    {
-        n.parse::<u64>().ok().map(|v| v * 86400)
-    } else if let Some(n) = timer
-        .strip_suffix('h')
-        .or_else(|| timer.strip_suffix("hour"))
-        .or_else(|| timer.strip_suffix("hours"))
-    {
-        n.parse::<u64>().ok().map(|v| v * 3600)
-    } else if let Some(n) = timer
-        .strip_suffix('m')
-        .or_else(|| timer.strip_suffix("min"))
-        .or_else(|| timer.strip_suffix("mins"))
-        .or_else(|| timer.strip_suffix("minute"))
-        .or_else(|| timer.strip_suffix("minutes"))
-    {
-        n.parse::<u64>().ok().map(|v| v * 60)
-    } else if let Some(n) = timer
-        .strip_suffix('s')
-        .or_else(|| timer.strip_suffix("sec"))
-        .or_else(|| timer.strip_suffix("secs"))
-        .or_else(|| timer.strip_suffix("second"))
-        .or_else(|| timer.strip_suffix("seconds"))
-    {
-        n.parse::<u64>().ok()
-    } else {
-        // Plain number — assume seconds
-        timer.parse::<u64>().ok()
+    let timer = timer.trim().to_ascii_lowercase();
+
+    if timer.is_empty() {
+        return None;
     }
+
+    let (number, multiplier) = if let Some(n) = timer.strip_suffix("weeks") {
+        (n, 7_u64 * 24 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix("week") {
+        (n, 7_u64 * 24 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix('w') {
+        (n, 7_u64 * 24 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix("days") {
+        (n, 24_u64 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix("day") {
+        (n, 24_u64 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix('d') {
+        (n, 24_u64 * 60 * 60)
+    } else if let Some(n) = timer.strip_suffix("hours") {
+        (n, 60_u64 * 60)
+    } else if let Some(n) = timer.strip_suffix("hour") {
+        (n, 60_u64 * 60)
+    } else if let Some(n) = timer.strip_suffix('h') {
+        (n, 60_u64 * 60)
+    } else if let Some(n) = timer.strip_suffix("minutes") {
+        (n, 60)
+    } else if let Some(n) = timer.strip_suffix("minute") {
+        (n, 60)
+    } else if let Some(n) = timer.strip_suffix("mins") {
+        (n, 60)
+    } else if let Some(n) = timer.strip_suffix("min") {
+        (n, 60)
+    } else if let Some(n) = timer.strip_suffix('m') {
+        (n, 60)
+    } else if let Some(n) = timer.strip_suffix("seconds") {
+        (n, 1)
+    } else if let Some(n) = timer.strip_suffix("second") {
+        (n, 1)
+    } else if let Some(n) = timer.strip_suffix("secs") {
+        (n, 1)
+    } else if let Some(n) = timer.strip_suffix("sec") {
+        (n, 1)
+    } else if let Some(n) = timer.strip_suffix('s') {
+        (n, 1)
+    } else {
+        (timer.as_str(), 1)
+    };
+
+    if number.is_empty() || !number.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+
+    number.parse::<u64>().ok()?.checked_mul(multiplier)
 }
 
-fn spawn_auto_close_timer(seconds: u64, mount_point: &Path) {
-    let mount = mount_point.to_string_lossy().to_string();
-    // Use nohup and double-fork so the process survives the parent exiting
-    let cmd = format!(
-        "nohup sh -c 'sleep {} && /usr/bin/hdiutil detach {}' >/dev/null 2>&1 &",
-        seconds, mount
-    );
-    let _ = std::process::Command::new("sh").args(["-c", &cmd]).spawn();
+fn spawn_auto_close_timer(seconds: u64, mount_point: &Path) -> bool {
+    use std::process::Stdio;
+
+    // Pass values as arguments rather than interpolating them into shell code
+    // The shell receives seconds as $1 and the mount path as $2
+    std::process::Command::new("/usr/bin/nohup")
+        .arg("/bin/sh")
+        .arg("-c")
+        .arg("sleep \"$1\" && exec /usr/bin/hdiutil detach \"$2\"")
+        .arg("pass-tomb-auto-close")
+        .arg(seconds.to_string())
+        .arg(mount_point)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .is_ok()
 }
 
 fn is_verbose() -> bool {
-    std::env::var("PASSWORD_STORE_VERBOSE").map_or(false, |v| v == "1")
+    std::env::var("PASSWORD_STORE_VERBOSE").is_ok_and(|v| v == "1")
 }
 
 fn get_public_trust(gpg_id: &str) -> Result<String> {
@@ -173,10 +196,10 @@ fn validate_gpg_ids(gpg_ids: &[String]) -> Result<()> {
             .args(["--with-colons", "--batch", "--list-secret-keys", id])
             .output()
             .ok();
-        if let Some(out) = output {
-            if out.status.success() {
-                return Ok(());
-            }
+        if let Some(out) = output
+            && out.status.success()
+        {
+            return Ok(());
         }
     }
 
@@ -262,6 +285,7 @@ fn set_ownership(path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_tomb(
     gpg_ids: &[String],
     no_init: bool,
@@ -276,6 +300,13 @@ pub fn cmd_tomb(
     tomb_path: Option<&str>,
     key_path: Option<&str>,
 ) -> Result<()> {
+    if let Some(t) = timer {
+        match parse_timer_seconds(t) {
+            Some(secs) if secs > 0 => {}
+            _ => bail!("Invalid timer duration: {}", t),
+        }
+    }
+
     if gpg_ids.is_empty() {
         bail!(
             "Usage: {} tomb [-n] [-T time] [-f] [-p subfolder] [-s size] gpg-id...",
@@ -309,7 +340,7 @@ pub fn cmd_tomb(
     }
 
     // Sanity checks
-    if !validate_gpg_ids(gpg_ids).is_ok() {
+    if validate_gpg_ids(gpg_ids).is_err() {
         bail!("You set an invalid GPG ID.");
     }
     if key.exists() {
@@ -414,19 +445,19 @@ pub fn cmd_tomb(
             .current_dir(&mount_point)
             .output()
             .ok();
-        if let Some(out) = git_init {
-            if out.status.success() {
-                Command::new("git")
-                    .args(["add", ".gpg-id"])
-                    .current_dir(&mount_point)
-                    .output()
-                    .ok();
-                Command::new("git")
-                    .args(["commit", "-m", "Initialise password store"])
-                    .current_dir(&mount_point)
-                    .output()
-                    .ok();
-            }
+        if let Some(out) = git_init
+            && out.status.success()
+        {
+            Command::new("git")
+                .args(["add", ".gpg-id"])
+                .current_dir(&mount_point)
+                .output()
+                .ok();
+            Command::new("git")
+                .args(["commit", "-m", "Initialise password store"])
+                .current_dir(&mount_point)
+                .output()
+                .ok();
         }
 
         // Try `pass init` as well for compatibility
@@ -438,13 +469,42 @@ pub fn cmd_tomb(
             .ok();
     }
 
-    // Set up timer if requested
+    // Set up timer if requested.
     let mut timed = None;
-    if let Some(t) = timer {
-        timed = Some(t.to_string());
-        _verbose!("Timer set to: {}", t);
-        if let Some(secs) = parse_timer_seconds(t) {
-            spawn_auto_close_timer(secs, &mount_point);
+
+    let timer_value = if let Some(t) = timer {
+        // One-shot timer supplied to this open command.
+        Some(t.to_string())
+    } else {
+        // Persistent timer stored outside the disk image.
+        let timer_path = tomb_timer_path();
+
+        if timer_path.exists() {
+            let value =
+                std::fs::read_to_string(&timer_path).context("failed to read saved timer")?;
+            let value = value.trim().to_string();
+
+            if value.is_empty() { None } else { Some(value) }
+        } else {
+            None
+        }
+    };
+
+    if let Some(t) = timer_value {
+        match parse_timer_seconds(&t) {
+            Some(secs) if secs > 0 => {
+                if spawn_auto_close_timer(secs, &mount_point) {
+                    timed = Some(t);
+                } else {
+                    eprintln!("Warning: could not start the auto-close timer.");
+                }
+            }
+            _ => {
+                eprintln!(
+                    "Warning: invalid timer duration '{}'; auto-close was not scheduled.",
+                    t
+                );
+            }
         }
     }
 
@@ -472,7 +532,6 @@ pub fn cmd_tomb(
     Ok(())
 }
 
-// Original: cmd_open()
 pub fn cmd_open(
     subfolder: Option<&str>,
     tomb_path: Option<&str>,
@@ -482,6 +541,12 @@ pub fn cmd_open(
     quiet: bool,
     verbose: bool,
 ) -> Result<()> {
+    if let Some(t) = timer {
+        match parse_timer_seconds(t) {
+            Some(secs) if secs > 0 => {}
+            _ => bail!("Invalid timer duration: {}", t),
+        }
+    }
     if quiet {
         unsafe {
             std::env::set_var("PASSWORD_STORE_QUIET", "1");
@@ -545,24 +610,37 @@ pub fn cmd_open(
     set_ownership(&mount_point)?;
 
     let mut timed = None;
-    if let Some(t) = timer {
-        // One-shot — don't touch .timer
-        timed = Some(t.to_string());
-        if let Some(secs) = parse_timer_seconds(t) {
-            spawn_auto_close_timer(secs, &mount_point);
-        }
+
+    let timer_value = if let Some(t) = timer {
+        Some(t.to_string())
     } else {
-        // Persistent — read external .timer file (outside DMG)
         let timer_path = tomb_timer_path();
+
         if timer_path.exists() {
-            if let Ok(t) = std::fs::read_to_string(&timer_path) {
-                let t = t.trim().to_string();
-                if !t.is_empty() {
-                    if let Some(secs) = parse_timer_seconds(&t) {
-                        spawn_auto_close_timer(secs, &mount_point);
-                    }
+            let value =
+                std::fs::read_to_string(&timer_path).context("failed to read saved timer")?;
+            let value = value.trim().to_string();
+
+            if value.is_empty() { None } else { Some(value) }
+        } else {
+            None
+        }
+    };
+
+    if let Some(t) = timer_value {
+        match parse_timer_seconds(&t) {
+            Some(secs) => {
+                if spawn_auto_close_timer(secs, &mount_point) {
                     timed = Some(t);
+                } else {
+                    eprintln!("Warning: could not start the auto-close timer.");
                 }
+            }
+            None => {
+                eprintln!(
+                    "Warning: invalid timer format '{}'; auto-close was not scheduled.",
+                    t
+                );
             }
         }
     }
@@ -600,7 +678,7 @@ pub fn cmd_close(store_path: Option<&str>, quiet: bool, verbose: bool) -> Result
     // Determine the tomb file path
     let tomb_file_path = if let Some(p) = store_path {
         let p = PathBuf::from(p);
-        if p.extension().map_or(true, |e| e != "dmg") {
+        if p.extension().is_none_or(|e| e != "dmg") {
             // Might be a store directory
             tomb_file()
         } else {
@@ -651,7 +729,7 @@ pub fn cmd_close(store_path: Option<&str>, quiet: bool, verbose: bool) -> Result
 
 pub fn cmd_timer(
     timer_value: Option<&str>,
-    store_path: Option<&str>,
+    _store_path: Option<&str>,
     clear: bool,
     quiet: bool,
 ) -> Result<()> {
@@ -661,41 +739,52 @@ pub fn cmd_timer(
         }
     }
 
-    let _path = store_path.map_or_else(store_dir, PathBuf::from);
     let timer_path = tomb_timer_path();
 
+    // Clear the persistent timer setting.
     if clear {
         if timer_path.exists() {
             std::fs::remove_file(&timer_path)?;
-            _message!("Timer cleared.");
+            _message!("Persistent timer cleared.");
         } else {
-            _message!("No timer to clear.");
+            _message!("No persistent timer to clear.");
         }
         return Ok(());
     }
 
-    // Set a new timer if a value was given
+    // Save a persistent timer setting. Do not start a countdown here.
     if let Some(val) = timer_value {
         let secs = parse_timer_seconds(val)
             .ok_or_else(|| anyhow::anyhow!("Invalid timer format: {}", val))?;
-        std::fs::write(&timer_path, val)?;
-        spawn_auto_close_timer(secs, &_path);
-        _message!("Timer set to {}.", val);
+
+        if secs == 0 {
+            bail!("Timer duration must be greater than zero.");
+        }
+
+        if let Some(parent) = timer_path.parent() {
+            std::fs::create_dir_all(parent).context("Failed to create timer settings directory")?;
+        }
+
+        std::fs::write(&timer_path, val.trim()).context("Failed to save persistent timer")?;
+
+        _message!("Persistent timer set to {}.", val.trim());
         return Ok(());
     }
 
-    // Show current timer
+    // Display the current persistent timer setting.
     if timer_path.exists() {
-        let content = std::fs::read_to_string(&timer_path)?;
+        let content =
+            std::fs::read_to_string(&timer_path).context("Failed to read persistent timer")?;
         let timer = content.trim();
-        if !timer.is_empty() {
-            _message!("Timer set: {}", timer);
-            println!("{}", timer);
+
+        if timer.is_empty() {
+            _message!("No persistent timer set.");
         } else {
-            _message!("No timer set.");
+            _message!("Persistent timer set: {}", timer);
+            println!("{}", timer);
         }
     } else {
-        _message!("No timer file found.");
+        _message!("No persistent timer set.");
     }
 
     Ok(())
@@ -740,15 +829,18 @@ fn gpg_get_recipients(key_path: &Path) -> Result<Vec<String>> {
 
 // Parse a line like "gpg: encrypted with ... key ID DEADBEEF, ..."
 fn extract_key_id_from_line(line: &str) -> Option<String> {
-    if line.contains("encrypted with") && line.contains("key ID") {
-        if let Some(idx) = line.find("key ID") {
-            let rest = &line[idx + 7..];
-            let id = rest.trim().split(|c: char| c == ',' || c == ' ').next()?;
-            if !id.is_empty() {
-                return Some(id.to_string());
-            }
+    if line.contains("encrypted with")
+        && line.contains("key ID")
+        && let Some(idx) = line.find("key ID")
+    {
+        let rest = &line[idx + 7..];
+        let id = rest.trim().split([',', ' ']).next()?;
+
+        if !id.is_empty() {
+            return Some(id.to_string());
         }
     }
+
     None
 }
 

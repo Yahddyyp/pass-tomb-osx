@@ -85,11 +85,11 @@ pub fn open_tomb_with_stdin_pass(
 
     let mut child = cmd.spawn().context("failed to spawn hdiutil attach")?;
 
-    if let Some(pass) = password {
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(pass.as_bytes())?;
-            stdin.write_all(&[0u8])?; // null-terminated
-        }
+    if let Some(pass) = password
+        && let Some(mut stdin) = child.stdin.take()
+    {
+        stdin.write_all(pass.as_bytes())?;
+        stdin.write_all(&[0u8])?; // null-terminated
     }
 
     let output = child.wait_with_output()?;
@@ -130,9 +130,8 @@ fn parse_attach_plist(data: &[u8]) -> Result<Option<PathBuf>> {
 }
 
 pub fn close_tomb(path: &Path) -> Result<()> {
-    let mount_point = if path.extension().map_or(false, |e| e == "dmg") {
-        let mp = find_mount_point(path)?.context("tomb is not currently mounted")?;
-        mp
+    let mount_point = if path.extension().is_some_and(|e| e == "dmg") {
+        find_mount_point(path)?.context("tomb is not currently mounted")?
     } else {
         path.to_path_buf()
     };

@@ -5,7 +5,7 @@ use clap::Parser;
 #[command(
     name = "pass-close",
     version = env!("CARGO_PKG_VERSION"),
-    about = "Close a password tomb"
+    about = "Close a password tomb."
 )]
 struct Cli {
     /// Path to the password store or tomb file to close
