@@ -85,6 +85,26 @@ struct Cli {
 }
 
 fn main() -> anyhow::Result<()> {
+    // Hidden entry point used by detached auto-close timer workers
+    let args: Vec<String> = std::env::args().collect();
+    if args
+        .get(1)
+        .is_some_and(|arg| arg == "--__auto-close-worker")
+    {
+        if args.len() != 8 {
+            anyhow::bail!("invalid internal auto-close worker arguments");
+        }
+        let seconds = args[2].parse::<u64>()?;
+        return pass_tomb::store::run_auto_close_worker(
+            seconds,
+            std::path::Path::new(&args[3]),
+            std::path::Path::new(&args[4]),
+            std::path::Path::new(&args[5]),
+            std::path::Path::new(&args[6]),
+            &args[7],
+        );
+    }
+
     let cli = Cli::parse();
 
     if cli.install {

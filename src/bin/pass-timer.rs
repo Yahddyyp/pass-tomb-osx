@@ -4,7 +4,7 @@ use clap::Parser;
 #[command(
     name = "pass-timer",
     version = env!("CARGO_PKG_VERSION"),
-    about = "Show, set, or clear timer status."
+    about = "Show, set, or clear a tomb-specific persistent timer."
 )]
 struct Cli {
     /// Omit to show current timer
@@ -12,6 +12,10 @@ struct Cli {
 
     /// Path to the password store
     store: Option<String>,
+
+    /// Tomb image whose persistent timer should be read or changed
+    #[arg(short = 't', long = "tomb", value_name = "FILE")]
+    tomb: Option<String>,
 
     /// Clear the timer
     #[arg(long = "clear")]
@@ -27,6 +31,7 @@ fn main() -> anyhow::Result<()> {
     pass_tomb::store::cmd_timer(
         cli.timer.as_deref(),
         cli.store.as_deref(),
+        cli.tomb.as_deref(),
         cli.clear,
         cli.quiet,
     )

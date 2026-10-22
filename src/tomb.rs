@@ -140,20 +140,41 @@ pub fn close_tomb(path: &Path) -> Result<()> {
 }
 
 // Close a tomb by its mount point path.
-pub fn close_tomb_by_mount(mount_point: &Path) -> Result<()> {
+pub fn close_tomb_by_mount(target: &Path) -> Result<()> {
     let output = Command::new("hdiutil")
         .arg("detach")
-        .arg(mount_point)
+        .arg(target)
         .stderr(std::process::Stdio::piped())
         .output()
         .context("failed to run hdiutil detach")?;
 
     if !output.status.success() {
-        // hdiutil stderr is intentionally discarded
+        let stderr = String::from_utf8_lossy(&output.stderr);
         bail!(
-            "hdiutil detach failed for {} (exit: {:?})",
-            mount_point.display(),
-            output.status.code()
+            "hdiutil detach failed for {} (exit: {:?}): {}",
+            target.display(),
+            output.status.code(),
+            stderr.trim()
+        );
+    }
+
+    // A successful process status is not enough: confirm that the target is no
+    // longer present in hdiutil's mounted-image inventory.
+    let canonical_target = target
+        .canonicalize()
+        .unwrap_or_else(|_| target.to_path_buf());
+    if list_open_tombs()?.iter().any(|entry| {
+        entry.mount_point == target
+            || entry.device_node.as_deref() == Some(target)
+            || entry
+                .mount_point
+                .canonicalize()
+                .unwrap_or_else(|_| entry.mount_point.clone())
+                == canonical_target
+    }) {
+        bail!(
+            "hdiutil reported a successful detach, but {} is still mounted",
+            target.display()
         );
     }
     Ok(())
@@ -161,25 +182,33 @@ pub fn close_tomb_by_mount(mount_point: &Path) -> Result<()> {
 
 pub fn close_tomb_by_name(name: &str) -> Result<()> {
     let tombs = list_open_tombs()?;
-    for t in &tombs {
-        if t.volume_name == name || t.mount_point.to_string_lossy().contains(name) {
-            return close_tomb_by_mount(&t.mount_point);
-        }
+    if let Some(tomb) = tombs.iter().find(|tomb| tomb.volume_name == name) {
+        let target = tomb.device_node.as_deref().unwrap_or(&tomb.mount_point);
+        return close_tomb_by_mount(target);
     }
 
-    // Try a direct detach by volume name
+    let target = PathBuf::from(format!("/Volumes/{name}"));
     let output = Command::new("hdiutil")
         .arg("detach")
-        .arg(format!("/Volumes/{}", name))
-        .stderr(std::process::Stdio::null())
+        .arg(&target)
+        .stderr(std::process::Stdio::piped())
         .output()
         .context("failed to run hdiutil detach")?;
 
-    if output.status.success() {
-        return Ok(());
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("Could not close volume '{}': {}", name, stderr.trim());
     }
-
-    bail!("Could not find an open tomb named '{}' to close.", name);
+    if list_open_tombs()?
+        .iter()
+        .any(|entry| entry.mount_point == target)
+    {
+        bail!(
+            "hdiutil reported success, but volume '{}' is still mounted",
+            name
+        );
+    }
+    Ok(())
 }
 
 // Information about an open (mounted) tomb.
@@ -189,6 +218,8 @@ pub struct TombInfo {
     pub image_path: Option<PathBuf>,
     // The mount point.
     pub mount_point: PathBuf,
+    // The mounted device node associated with this mount point.
+    pub device_node: Option<PathBuf>,
     // The volume name.
     pub volume_name: String,
 }
@@ -252,31 +283,66 @@ fn parse_info_plist(data: &[u8]) -> Result<Vec<TombInfo>> {
     let plist_str = String::from_utf8_lossy(data);
     let mut results = Vec::new();
 
-    // Find each outer <dict> (the top level image entries)
+    // If the plist has an "images" array (standard macOS hdiutil info format),
+    // scope to its contents so top-level dicts are the individual image entries.
+    let target_slice = if let Some(images_key_pos) = plist_str.find("<key>images</key>") {
+        if let Some(arr_start) = plist_str[images_key_pos..].find("<array>") {
+            let start = images_key_pos + arr_start + 7;
+            let mut depth = 1;
+            let mut search_pos = start;
+            while depth > 0 && search_pos < plist_str.len() {
+                let next_open = plist_str[search_pos..].find("<array>");
+                let next_close = plist_str[search_pos..].find("</array>");
+                match (next_open, next_close) {
+                    (Some(o), Some(c)) if o < c => {
+                        depth += 1;
+                        search_pos += o + 7;
+                    }
+                    (_, Some(c)) => {
+                        depth -= 1;
+                        search_pos += c + 8;
+                    }
+                    _ => break,
+                }
+            }
+            let end = if depth == 0 {
+                search_pos - 8
+            } else {
+                plist_str.len()
+            };
+            &plist_str[start..end]
+        } else {
+            &plist_str[..]
+        }
+    } else {
+        &plist_str[..]
+    };
+
+    // Find each image <dict> inside target_slice
     let mut pos = 0;
-    while let Some(dict_start) = plist_str[pos..].find("<dict>") {
+    while let Some(dict_start) = target_slice[pos..].find("<dict>") {
         let abs_start = pos + dict_start;
         // Find the matching </dict> by counting nesting
         let mut depth = 1;
         let mut search_pos = abs_start + 6;
-        while depth > 0 {
-            let next_open = plist_str[search_pos..].find("<dict>");
-            let next_close = plist_str[search_pos..].find("</dict>");
+        while depth > 0 && search_pos < target_slice.len() {
+            let next_open = target_slice[search_pos..].find("<dict>");
+            let next_close = target_slice[search_pos..].find("</dict>");
             match (next_open, next_close) {
                 (Some(o), Some(c)) if o < c => {
                     depth += 1;
-                    search_pos = search_pos + o + 6;
+                    search_pos += o + 6;
                 }
                 (_, Some(c)) => {
                     depth -= 1;
-                    search_pos = search_pos + c + 7;
+                    search_pos += c + 7;
                 }
                 _ => break,
             }
         }
-        let dict_content = &plist_str[abs_start..search_pos];
+        let dict_content = &target_slice[abs_start..search_pos];
 
-        // Only process top-level dicts that have an image-path
+        // Only process dicts that have an image-path
         let image_path = extract_plist_string(dict_content, "image-path");
         if let Some(ip) = image_path {
             // Look for mount-point inside nested system-entities array
@@ -284,6 +350,7 @@ fn parse_info_plist(data: &[u8]) -> Result<Vec<TombInfo>> {
                 results.push(TombInfo {
                     image_path: Some(PathBuf::from(ip)),
                     mount_point: PathBuf::from(mount_point),
+                    device_node: find_nested_device_node(dict_content).map(PathBuf::from),
                     volume_name: mount_point
                         .rsplit('/')
                         .next()
@@ -297,6 +364,13 @@ fn parse_info_plist(data: &[u8]) -> Result<Vec<TombInfo>> {
     }
 
     Ok(results)
+}
+
+// Find the whole-image device node used to detach the mounted image.
+fn find_nested_device_node(dict_xml: &str) -> Option<&str> {
+    // hdiutil lists the whole image device before its partition/volume entities.
+    // Use that device for detach, while mount-point identifies the mounted volume.
+    extract_plist_string(dict_xml, "dev-entry")
 }
 
 // Search a plist dict for a mount-point key, handling nested arrays.
@@ -353,7 +427,6 @@ fn extract_plist_string<'a>(dict_xml: &'a str, key: &str) -> Option<&'a str> {
 }
 
 // Change the passphrase on an existing tomb disk image.
-#[allow(dead_code)]
 pub fn resize_tomb(tomb_path: &Path, new_size: &str, password: &[u8]) -> Result<()> {
     let mut child = Command::new("hdiutil")
         .args(["resize", "-stdinpass", "-size", new_size])
@@ -463,6 +536,12 @@ mod tests {
         <key>system-entities</key>
         <array>
             <dict>
+                <key>dev-entry</key>
+                <string>/dev/disk4</string>
+            </dict>
+            <dict>
+                <key>dev-entry</key>
+                <string>/dev/disk4s1</string>
                 <key>mount-point</key>
                 <string>/Volumes/pass-tomb</string>
             </dict>
@@ -474,9 +553,74 @@ mod tests {
         let result = parse_info_plist(xml.as_bytes()).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].mount_point, PathBuf::from("/Volumes/pass-tomb"));
+        assert_eq!(result[0].device_node, Some(PathBuf::from("/dev/disk4")));
         assert_eq!(
             result[0].image_path,
             Some(PathBuf::from("/Users/test/pass-tomb.dmg"))
+        );
+    }
+
+    #[test]
+    fn test_parse_info_plist_multiple_images() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>framework</key>
+    <string>704</string>
+    <key>images</key>
+    <array>
+        <dict>
+            <key>image-path</key>
+            <string>/Users/test/first.dmg</string>
+            <key>system-entities</key>
+            <array>
+                <dict>
+                    <key>dev-entry</key>
+                    <string>/dev/disk5</string>
+                </dict>
+                <dict>
+                    <key>dev-entry</key>
+                    <string>/dev/disk5s1</string>
+                    <key>mount-point</key>
+                    <string>/Volumes/first</string>
+                </dict>
+            </array>
+        </dict>
+        <dict>
+            <key>image-path</key>
+            <string>/Users/test/second.dmg</string>
+            <key>system-entities</key>
+            <array>
+                <dict>
+                    <key>dev-entry</key>
+                    <string>/dev/disk6</string>
+                </dict>
+                <dict>
+                    <key>dev-entry</key>
+                    <string>/dev/disk6s1</string>
+                    <key>mount-point</key>
+                    <string>/Volumes/second</string>
+                </dict>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>"#;
+
+        let result = parse_info_plist(xml.as_bytes()).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].mount_point, PathBuf::from("/Volumes/first"));
+        assert_eq!(result[0].device_node, Some(PathBuf::from("/dev/disk5")));
+        assert_eq!(
+            result[0].image_path,
+            Some(PathBuf::from("/Users/test/first.dmg"))
+        );
+        assert_eq!(result[1].mount_point, PathBuf::from("/Volumes/second"));
+        assert_eq!(result[1].device_node, Some(PathBuf::from("/dev/disk6")));
+        assert_eq!(
+            result[1].image_path,
+            Some(PathBuf::from("/Users/test/second.dmg"))
         );
     }
 }
