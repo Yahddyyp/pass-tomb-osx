@@ -11,7 +11,7 @@ struct Cli {
     #[arg(value_name = "GPG-ID")]
     gpg_ids: Vec<String>,
 
-    /// Change the configuration of an existing tomb
+    /// Change the password of an existing tomb
     #[arg(short = 'C', long = "change", conflicts_with_all = ["chkey", "resize", "export", "import", "install"])]
     change: bool,
 
@@ -39,7 +39,7 @@ struct Cli {
     #[arg(long = "install", conflicts_with_all = ["change", "chkey", "resize", "export", "import"])]
     install: bool,
 
-    /// Do not initialize a new tomb if one does not exist
+    /// Do not initialize the password store (skips pass init, .gpg-id, and git)
     #[arg(short = 'n', long = "no-init")]
     no_init: bool,
 

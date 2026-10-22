@@ -38,10 +38,6 @@ cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
 You need `gnupg` and `pass for cargo as well 
 
 ## Setup 
-
-> [!NOTE]
-> We need to add these environment variables for `pass-tomb --install` so we can use `pass tomb` without need to put in the - in between, you can skip the **setup** if you are fine with the use of pass-<open/tomb/close/timer>.
-
 ### Zsh/Bash  
 Add this to your `.zshrc` or `.bashrc`
 ``` bash 
@@ -73,45 +69,75 @@ PASSWORD_STORE_EXTENSIONS_DIR="$HOME/.local/share/pass-extensions"
 
 ## Usage 
 ### Create a tomb
+By default, this creates `~/.password.tomb.dmg` with key `~/.password.key.tomb` and mounts it at `~/.password-store`:
 ```bash
 pass-tomb <GPG-ID>
- ```
+```
+
+#### Custom tomb name or location
+You can specify custom paths for the DMG and key using `-t/--tomb` and `-k/--key` flags:
+```bash
+pass-tomb -t ~/Work.tomb.dmg -k ~/Work.key.tomb <GPG-ID>
+```
+
+#### Subfolder tomb
+To create and mount a tomb for a specific subfolder within your store, use `-p/--path` flag:
+```bash
+pass-tomb -p work <GPG-ID>
+```
 
 ### Open the tomb
-
- ```bash
+```bash
 pass-open
- ```
+```
 
 ### Use pass as normal
-
- ```bash
+```bash
 pass insert github/token
 pass show github/token
 pass generate github/new-pass 20
- ```
+```
 
 ### Close the tomb
-
- ```bash
+```bash
 pass-close
- ```
+```
 
 ### Auto-close timer
+You can set an auto-close timer to automatically unmount and close your tomb after a specified duration.
 
- One-shot (just this session):
-
- ```bash
+One-shot timer (only applies to the current session):
+```bash
 pass-open -T 30m
- ```
+```
 
- Persistent (every session until cleared):
-
- ```bash
+Persistent timer (automatically used on every `pass-open` until cleared):
+```bash
+# Set a persistent timer (supports s, m, h, d, w, e.g. 30m, 1h, 2d, 90s)
 pass-timer 30m
-pass-open          # reads the persistent timer
-pass-timer --clear # remove it
- ```
+
+# View currently configured persistent timer
+pass-timer
+
+# Clear/remove the persistent timer
+pass-timer --clear
+```
+
+Persistent timer for a specific tomb:
+```bash
+# Set a timer for a specific tomb image
+pass-timer -t ~/.work.tomb.dmg 15m
+
+# View the timer for that specific tomb
+pass-timer -t ~/.work.tomb.dmg
+
+# Clear the timer for that specific tomb
+pass-timer -t ~/.work.tomb.dmg --clear
+```
+
+- **Per-tomb storage:** Each tomb maintains its own persistent timer settings under `~/Library/Application Support/pass-tomb/timers/`. For non-default tombs, pass `-t, --tomb <file>`.
+- **Automatic cancellation:** When you manually close an open tomb, any active background auto-close timer for that session is safely cancelled.
+- **Worker logs:** Background timer worker output is logged to `~/Library/Application Support/pass-tomb/timers/worker.log`.
 
 ### Change password
 
@@ -174,8 +200,8 @@ rm -rf ~/.password-store.backup
 | `PASSWORD_STORE_TOMB_FILE` | `~/.password.tomb.dmg` | Path to the encrypted DMG |
 | `PASSWORD_STORE_TOMB_KEY` | `~/.password.key.tomb` | Path to the GPG-encrypted tomb key |
 | `PASSWORD_STORE_TOMB_SIZE` | `30` | Default tomb size in MB |
-| `PASSWORD_STORE_TOMB_TIMER` | `~/.password.tomb.timer` | Persistent timer file location |
-| `PASSWORD_STORE_ENABLE_EXTENSIONS` | — | Must be `true` for `pass open/close/timer/tomb` |
+| `PASSWORD_STORE_TOMB_TIMER` | `~/Library/Application Support/pass-tomb/timers/<hash>.timer` | Persistent timer file location (legacy `~/.password.tomb.timer` supported as fallback) |
+| `PASSWORD_STORE_ENABLE_EXTENSIONS` | — | Must be `true` for `pass-open/close/timer/tomb` |
 | `PASSWORD_STORE_EXTENSIONS_DIR` | `$PREFIX/.extensions` | Directory for extension wrapper scripts |
 | `PASSWORD_STORE_VERBOSE` | — | Set to `1` for verbose output |
 | `PASSWORD_STORE_QUIET` | — | Set to `1` for quiet output |
@@ -186,12 +212,12 @@ rm -rf ~/.password-store.backup
 
 | Flag | Description |
 |---|---|
-| `-n, --no-init` | Skip `pass init`, preserve existing `.gpg-id` and git |
+| `-n, --no-init` | Skip password store initialization (skips `pass init`, `.gpg.id` and `git`) |
 | `-s, --size <MB>` | Tomb size in MB (default: 30) |
 | `-p, --path <subfolder>` | Create tomb for a subfolder |
 | `-t, --tomb <file>` | Path to the DMG file |
 | `-k, --key <file>` | Path to the key file |
-| `-T, --timer <time>` | One-shot timer (e.g. `30m`, `2h`) |
+| `-T, --timer <time>` | One-shot timer (e.g. `30m`, `2h`, `2m30s` is not accepted) |
 | `-f, --force` | Force overwrite |
 | `--unsafe` | Speed up creation (testing only) |
 | `-C, --change` | Change the tomb password |
@@ -214,9 +240,12 @@ rm -rf ~/.password-store.backup
 
 | Flag | Description |
 |---|---|
-| `<value>` | Set persistent timer (e.g. `30m`, `2h`, `1s`) |
-| _(no arg)_ | Show current timer |
+| `<value>` | Set persistent timer (e.g. `30m`, `2h`, `10s`, 2m30s is not accepted) |
+| `[store]` | Path to password store |
+| `-t, --tomb <file>` | Tomb image whose persistent timer should be read or changed |
 | `--clear` | Remove the timer file |
+| `-q, --quiet` | Be quiet |
+| _(no arg)_ | Show current timer |
 
 
 ## Some other information 
@@ -225,8 +254,6 @@ rm -rf ~/.password-store.backup
 - It will create a random password that it will not show nor can you find anywhere unless you decrypt the key file for the DMG. You can change it to a password you can remember using `-C/--change`, or just leave the key file where the DMG can find it 
 
 - It will use your **gpg key** passphrase to open the tomb and will not need it again for the time you set in your gpg config
-
-- The `pass-timer` cli does not handle  mutiple units like 2m30s or 2m 30s, you will need to convert them into seconds for it to work properly
 
 - I would make a better `-h/--help` and a `man` page for it but i am too lazy if you want to make this happen you can submit a pr
 

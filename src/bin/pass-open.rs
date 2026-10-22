@@ -7,7 +7,7 @@ struct Cli {
     /// Subfolder to open the tomb in
     subfolder: Option<String>,
 
-    /// Specify the path to the password tomb [default: ~/.password.tomb.dmg]
+    /// Specify the path to the password tomb
     #[arg(short = 't', long = "tomb")]
     tomb: Option<String>,
 

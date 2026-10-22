@@ -790,7 +790,7 @@ pub fn cmd_tomb(
     if let Some(t) = timed {
         _message!("This password store will be closed in {}", t);
     } else {
-        _message!("When finished, close the password tomb using 'pass close'.");
+        _message!("When finished, close the password tomb using 'pass-close'.");
     }
 
     Ok(())
@@ -940,7 +940,7 @@ pub fn cmd_open(
     if let Some(t) = timed {
         _message!("This password store will be closed in {}", t);
     } else {
-        _message!("When finished, close the password tomb using 'pass close'.");
+        _message!("When finished, close the password tomb using 'pass-close'.");
     }
 
     Ok(())
@@ -1304,7 +1304,7 @@ pub fn cmd_resize(
 
     _success!("Tomb resized to {}.", new_size);
     if was_mounted {
-        _message!("Re-open with 'pass open'.");
+        _message!("Re-open with 'pass-open'.");
     }
 
     Ok(())
