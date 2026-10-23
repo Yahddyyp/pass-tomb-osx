@@ -31,7 +31,7 @@ pass-tomb-osx.packages.${pkgs.stdenv.hostPlatform.system}.default
 cargo install --git https://github.com/Yahddyyp/pass-tomb-osx
  ```
 
-You need `gnupg` and `pass for cargo as well 
+You need `gnupg` and `pass` for cargo as well 
 
 ## Setup 
 ### Zsh/Bash  
