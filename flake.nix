@@ -48,18 +48,10 @@
           installPhase = ''
             runHook preInstall
 
-            mkdir -p $out/bin $out/share/pass-extensions
+            mkdir -p $out/bin
 
             for bin in pass-tomb pass-open pass-close pass-timer; do
               install -m 755 "$bin" "$out/bin/$bin"
-            done
-
-            for cmd in tomb open close timer; do
-              cat <<EOF > $out/share/pass-extensions/$cmd.bash
-#!/usr/bin/env bash
-exec $out/bin/pass-$cmd "\$@"
-EOF
-              chmod +x $out/share/pass-extensions/$cmd.bash
             done
 
             runHook postInstall
