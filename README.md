@@ -11,23 +11,19 @@ brew tap Yahddyyp/tap
 brew install pass-tomb
  ```
 
-### Nix Flake (for the geeks)
-Add to your flake inputs:
+### Nix Flake
 
+Add to your flake inputs:
 ```nix
 pass-tomb-osx = {
   url = "github:Yahddyyp/pass-tomb-osx";
-  inputs.nixpkgs.follows = "nixpkgs";
 };
 ```
 
-Then reference the package, e.g. in `home.packages` or `environment.systemPackages`:
-
+Then reference the package in `home.packages` or `environment.systemPackages`:
 ```nix
 pass-tomb-osx.packages.${pkgs.stdenv.hostPlatform.system}.default
 ```
-
-Requires `gnupg` and `pass` to be installed using nixpkgs as well since they're runtime dependencies, not bundled.
 
 ### Cargo
 
@@ -54,7 +50,7 @@ set -x PASSWORD_STORE_EXTENSIONS_DIR "$HOME/.local/share/pass-extensions"
 
 ### nushell 
 Add this to your `env.nu` or wherever you have your nu config
-```nushell 
+```nu
 $env.PASSWORD_STORE_ENABLE_EXTENSIONS = "true"
 $env.PASSWORD_STORE_EXTENSIONS_DIR = "$HOME/.local/share/pass-extensions"
 ```
